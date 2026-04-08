@@ -1,18 +1,46 @@
-// Central localStorage helper
-
-const KEYS = {
-  PROFILE: 'scab_profile',
-  ROOMS: 'scab_rooms',
-}
+import { supabase } from './lib/supabase'
 
 // --- Profile ---
-export function getProfile() {
-  try { return JSON.parse(localStorage.getItem(KEYS.PROFILE)) || null }
-  catch { return null }
+// We store a profile ID in localStorage to identify the local user
+const PROFILE_KEY = 'scab_profile_id'
+
+export async function getProfile() {
+  const id = localStorage.getItem(PROFILE_KEY)
+  if (!id) return null
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .single()
+    
+  if (error) return null
+  return data
 }
 
-export function saveProfile(data) {
-  localStorage.setItem(KEYS.PROFILE, JSON.stringify(data))
+export async function saveProfile(profileData) {
+  const existingId = localStorage.getItem(PROFILE_KEY)
+  
+  if (existingId) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ name: profileData.name, mobile: profileData.mobile })
+      .eq('id', existingId)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  } else {
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([{ name: profileData.name, mobile: profileData.mobile }])
+      .select()
+      .single()
+    
+    if (error) throw error
+    if (data) localStorage.setItem(PROFILE_KEY, data.id)
+    return data
+  }
 }
 
 // --- Ghaziabad Locations with Coordinates ---
@@ -43,158 +71,155 @@ export const LOCATION_COORDS = {
 }
 
 // --- Rooms ---
-const defaultRooms = [
-  {
-    id: 'r1',
-    owner: 'Rahul Sharma',
-    ownerMobile: '9876543210',
-    from: 'Vaishali Metro',
-    to: 'Ghaziabad Railway Stn',
-    time: '16:30',
-    tags: ['Office Goers', 'Daily Commute'],
-    seats: 4,
-    passengers: [{ name: 'Rahul Sharma', mobile: '9876543210', isOwner: true }],
-    chat: [
-      { sender: 'Rahul Sharma', text: 'Cab booked! Meeting at Vaishali Gate 1.', time: '14:02', mine: false },
-    ],
-    createdAt: Date.now() - 1000 * 60 * 60,
-  },
-  {
-    id: 'r2',
-    owner: 'Priya Gupta',
-    ownerMobile: '9876543211',
-    from: 'Indirapuram',
-    to: 'Noida Sector 62',
-    time: '18:00',
-    tags: ['IT Professionals', 'Students'],
-    seats: 3,
-    passengers: [
-      { name: 'Priya Gupta', mobile: '9876543211', isOwner: true },
-      { name: 'Amit Kumar', mobile: '9876543212', isOwner: false },
-    ],
-    chat: [
-      { sender: 'Priya Gupta', text: 'Anyone near Shipra Mall?', time: '16:45', mine: false },
-      { sender: 'Amit Kumar', text: 'Yes, coming in 5 mins!', time: '16:46', mine: false },
-    ],
-    createdAt: Date.now() - 1000 * 60 * 30,
-  },
-  {
-    id: 'r3',
-    owner: 'Vikash Singh',
-    ownerMobile: '9876543213',
-    from: 'Raj Nagar Extension',
-    to: 'Mohan Nagar',
-    time: '17:15',
-    tags: ['Students', 'Evening Commute'],
-    seats: 4,
-    passengers: [{ name: 'Vikash Singh', mobile: '9876543213', isOwner: true }],
-    chat: [],
-    createdAt: Date.now() - 1000 * 60 * 10,
-  },
-  {
-    id: 'r4',
-    owner: 'Sneha Tripathi',
-    ownerMobile: '9876543214',
-    from: 'Kaushambi',
-    to: 'Crossings Republik',
-    time: '09:00',
-    tags: ['Morning Commute', 'Office Goers'],
-    seats: 4,
-    passengers: [{ name: 'Sneha Tripathi', mobile: '9876543214', isOwner: true }],
-    chat: [
-      { sender: 'Sneha Tripathi', text: 'Good morning! Cab departs sharp at 9.', time: '08:30', mine: false },
-    ],
-    createdAt: Date.now() - 1000 * 60 * 5,
-  },
-  {
-    id: 'r5',
-    owner: 'Ankit Verma',
-    ownerMobile: '9876543215',
-    from: 'ALT Centre',
-    to: 'Vaishali Metro',
-    time: '10:30',
-    tags: ['Students', 'Daily Commute'],
-    seats: 4,
-    passengers: [{ name: 'Ankit Verma', mobile: '9876543215', isOwner: true }],
-    chat: [],
-    createdAt: Date.now() - 1000 * 60 * 20,
-  },
-  {
-    id: 'r6',
-    owner: 'Megha Sahni',
-    ownerMobile: '9876543216',
-    from: 'Vasundhara',
-    to: 'Indirapuram',
-    time: '19:45',
-    tags: ['Evening Commute', 'IT Professionals'],
-    seats: 3,
-    passengers: [{ name: 'Megha Sahni', mobile: '9876543216', isOwner: true }],
-    chat: [],
-    createdAt: Date.now() - 1000 * 60 * 15,
-  },
-]
+export async function getRooms() {
+  const { data: rooms, error } = await supabase
+    .from('rooms')
+    .select(`
+      *,
+      owner:profiles!rooms_owner_id_fkey(name, mobile),
+      passengers:room_passengers(
+        profile:profiles(id, name, mobile),
+        is_owner
+      )
+    `)
+    .order('created_at', { ascending: false })
 
-export function getRooms() {
-  try {
-    const stored = localStorage.getItem(KEYS.ROOMS)
-    return stored ? JSON.parse(stored) : defaultRooms
-  } catch { return defaultRooms }
-}
-
-export function saveRooms(rooms) {
-  localStorage.setItem(KEYS.ROOMS, JSON.stringify(rooms))
-}
-
-export function getRoomById(id) {
-  return getRooms().find(r => r.id === id) || null
-}
-
-export function createRoom(data) {
-  const rooms = getRooms()
-  const newRoom = {
-    id: 'r' + Date.now(),
-    ...data,
-    passengers: [{ name: data.ownerName, mobile: data.ownerMobile, isOwner: true }],
-    chat: [],
-    createdAt: Date.now(),
+  if (error) {
+    console.error('Error fetching rooms:', error)
+    return []
   }
-  saveRooms([newRoom, ...rooms])
-  return newRoom
+
+  // Transform to match previous structure
+  return rooms.map(r => ({
+    id: r.id,
+    owner: r.owner.name,
+    ownerMobile: r.owner.mobile,
+    from: r.from,
+    to: r.to,
+    time: r.time.slice(0, 5), // 'HH:mm:ss' to 'HH:mm'
+    seats: r.seats,
+    passengers: r.passengers.map(p => ({
+      id: p.profile.id,
+      name: p.profile.name,
+      mobile: p.profile.mobile,
+      isOwner: p.is_owner
+    })),
+    createdAt: new Date(r.created_at).getTime()
+  }))
 }
 
-export function joinRoom(roomId, passenger) {
-  const rooms = getRooms()
-  const updated = rooms.map(r => {
-    if (r.id !== roomId) return r
-    const already = r.passengers.find(p => p.mobile === passenger.mobile)
-    if (already) return r
-    return { ...r, passengers: [...r.passengers, passenger] }
-  })
-  saveRooms(updated)
+export async function getRoomById(id) {
+  const { data: room, error } = await supabase
+    .from('rooms')
+    .select(`
+      *,
+      owner:profiles!rooms_owner_id_fkey(name, mobile),
+      passengers:room_passengers(
+        profile:profiles(id, name, mobile),
+        is_owner
+      ),
+      chat:messages(
+        text,
+        created_at,
+        sender:profiles(name)
+      )
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error || !room) {
+    console.error('Error fetching room by ID:', error)
+    return null
+  }
+
+  return {
+    id: room.id,
+    owner: room.owner.name,
+    ownerMobile: room.owner.mobile,
+    from: room.from,
+    to: room.to,
+    time: room.time.slice(0, 5),
+    seats: room.seats,
+    passengers: room.passengers.map(p => ({
+      id: p.profile.id,
+      name: p.profile.name,
+      mobile: p.profile.mobile,
+      isOwner: p.is_owner
+    })),
+    chat: room.chat.sort((a,b) => new Date(a.created_at) - new Date(b.created_at)).map(m => ({
+      sender: m.sender.name,
+      text: m.text,
+      time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    })),
+    createdAt: new Date(room.created_at).getTime()
+  }
 }
 
-export function sendMessage(roomId, message) {
-  const rooms = getRooms()
-  const updated = rooms.map(r => {
-    if (r.id !== roomId) return r
-    return { ...r, chat: [...r.chat, message] }
-  })
-  saveRooms(updated)
+export async function createRoom(roomData) {
+  const profile = await getProfile()
+  if (!profile) throw new Error('Profile required')
+
+  // 1. Create the room
+  const { data: room, error: roomErr } = await supabase
+    .from('rooms')
+    .insert([{
+      owner_id: profile.id,
+      from: roomData.from,
+      to: roomData.to,
+      time: roomData.time,
+      seats: roomData.seats
+    }])
+    .select()
+    .single()
+
+  if (roomErr) throw roomErr
+
+  // 2. Add owner as first passenger
+  const { error: passErr } = await supabase
+    .from('room_passengers')
+    .insert([{
+      room_id: room.id,
+      profile_id: profile.id,
+      is_owner: true
+    }])
+
+  if (passErr) throw passErr
+
+  return room
+}
+
+export async function joinRoom(roomId) {
+  const profile = await getProfile()
+  if (!profile) throw new Error('Profile required')
+
+  const { error } = await supabase
+    .from('room_passengers')
+    .insert([{
+      room_id: roomId,
+      profile_id: profile.id,
+      is_owner: false
+    }])
+
+  if (error) throw error
+}
+
+export async function sendMessage(roomId, text) {
+  const profile = await getProfile()
+  if (!profile) throw new Error('Profile required')
+
+  const { error } = await supabase
+    .from('messages')
+    .insert([{
+      room_id: roomId,
+      sender_id: profile.id,
+      text: text
+    }])
+
+  if (error) throw error
 }
 
 // -- Utils --
 export const LOCATIONS = Object.keys(LOCATION_COORDS)
-
-export const TAGS = [
-  'Office Goers',
-  'Students',
-  'IT Professionals',
-  'Daily Commute',
-  'Morning Commute',
-  'Evening Commute',
-  'Weekend Trip',
-  'Airport Transfer',
-]
 
 export function timeLeft(room) {
   const [h, m] = room.time.split(':').map(Number)

@@ -10,44 +10,59 @@ export default function RidesPage() {
 
   const [tab, setTab] = useState('all')
   const [rooms, setRooms] = useState([])
-  const profile = getProfile()
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setRooms(getRooms())
+    async function load() {
+      const p = await getProfile()
+      setProfile(p)
+      const data = await getRooms()
+      setRooms(data)
+      setLoading(false)
+    }
+    load()
+    
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(load, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const myRooms = rooms.filter(r =>
-    r.passengers.some(p => p.mobile === profile?.mobile)
+    r.passengers.some(p => p.id === profile?.id)
   )
 
   const filteredRooms = filter
     ? rooms.filter(r => {
         const matchRoute = (!filter.from || r.from === filter.from)
           && (!filter.to || r.to === filter.to)
-        const matchTags = !filter.tags?.length
-          || filter.tags.some(t => r.tags.includes(t))
-        return matchRoute && matchTags
+        return matchRoute
       })
     : rooms
 
   const displayed = tab === 'all' ? filteredRooms : myRooms
 
-  const handleJoin = (e, room) => {
+  const handleJoin = async (e, room) => {
     e.stopPropagation()
-    if (!profile) {
+    const p = await getProfile()
+    if (!p) {
       window.__showToast?.('💡 Set up your profile first!')
       setTimeout(() => navigate('/profile'), 800)
       return
     }
-    const already = room.passengers.some(p => p.mobile === profile.mobile)
+    const already = room.passengers.some(pass => pass.id === p.id)
     if (already) {
       navigate(`/room/${room.id}`)
       return
     }
-    joinRoom(room.id, { name: profile.name, mobile: profile.mobile, isOwner: false })
-    setRooms(getRooms())
-    window.__showToast?.('🎉 Joined room!')
-    setTimeout(() => navigate(`/room/${room.id}`), 600)
+    try {
+      await joinRoom(room.id)
+      window.__showToast?.('🎉 Joined room!')
+      setTimeout(() => navigate(`/room/${room.id}`), 600)
+    } catch (err) {
+      window.__showToast?.('❌ Error joining room')
+      console.error(err)
+    }
   }
 
   return (
@@ -92,7 +107,12 @@ export default function RidesPage() {
       </div>
 
       <div className="section">
-        {displayed.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', marginTop: 100, color: 'var(--text-muted)' }}>
+            <div className="animate-pulse" style={{ fontSize: 40, marginBottom: 12 }}>🚕</div>
+            <div>Loading rides from database...</div>
+          </div>
+        ) : displayed.length === 0 ? (
           <div className="empty-state animate-in">
             <div className="empty-icon">🚕</div>
             <div className="empty-title">No rooms found</div>
@@ -157,14 +177,7 @@ export default function RidesPage() {
                   </div>
                 </div>
 
-                {/* Tags */}
-                {room.tags?.length > 0 && (
-                  <div className="tag-group" style={{ marginTop: 10 }}>
-                    {room.tags.map(t => (
-                      <span key={t} className="tag selected" style={{ fontSize: 11, padding: '3px 10px' }}>{t}</span>
-                    ))}
-                  </div>
-                )}
+
 
                 {/* Action */}
                 <button

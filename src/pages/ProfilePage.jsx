@@ -8,23 +8,31 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    const p = getProfile()
-    if (p) { setForm(p); setSaved(true) }
+    async function load() {
+      const p = await getProfile()
+      if (p) { setForm(p); setSaved(true) }
+    }
+    load()
   }, [])
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   const setGender = (g) => setForm(f => ({ ...f, gender: g }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.name || !form.age || !form.mobile) {
-      window.__showToast?.('Please fill all fields')
+    if (!form.name || !form.mobile) {
+      window.__showToast?.('Please fill Name and Mobile')
       return
     }
-    saveProfile(form)
-    setSaved(true)
-    window.__showToast?.('✅ Profile saved!')
-    setTimeout(() => navigate('/search'), 800)
+    try {
+      await saveProfile(form)
+      setSaved(true)
+      window.__showToast?.('✅ Profile saved!')
+      setTimeout(() => navigate('/search'), 800)
+    } catch (err) {
+      window.__showToast?.('❌ Error saving profile')
+      console.error(err)
+    }
   }
 
   return (

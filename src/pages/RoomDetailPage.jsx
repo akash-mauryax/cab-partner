@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getRoomById, sendMessage, getProfile, now, joinRoom, getRooms } from '../store'
+import { supabase } from '../lib/supabase'
 import MapView from '../components/MapView'
 
 const FARE_TABLE = {
@@ -25,13 +26,33 @@ export default function RoomDetailPage() {
   const navigate = useNavigate()
   const [room, setRoom] = useState(null)
   const [msg, setMsg] = useState('')
+  const [profile, setProfile] = useState(null)
   const chatRef = useRef(null)
-  const profile = getProfile()
 
   useEffect(() => {
-    const r = getRoomById(id)
-    if (!r) { navigate('/rides'); return }
-    setRoom(r)
+    async function load() {
+      const p = await getProfile()
+      setProfile(p)
+      const r = await getRoomById(id)
+      if (!r) { navigate('/rides'); return }
+      setRoom(r)
+    }
+    load()
+
+    // Real-time subscription for messages and room updates
+    const channel = supabase
+      .channel(`room:${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${id}` }, () => {
+        load()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_passengers', filter: `room_id=eq.${id}` }, () => {
+        load()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [id])
 
   useEffect(() => {
@@ -43,42 +64,45 @@ export default function RoomDetailPage() {
   if (!room) return null
 
   const estimate = getEstimate(room.from, room.to)
-  const isMember = room.passengers.some(p => p.mobile === profile?.mobile)
+  const isMember = room.passengers.some(p => p.id === profile?.id)
   const farePerHead = room.passengers.length > 0
     ? Math.round(estimate.fare / room.passengers.length)
     : estimate.fare
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!msg.trim()) return
-    if (!profile) {
+    const p = await getProfile()
+    if (!p) {
       window.__showToast?.('Set up your profile to chat!')
       return
     }
-    const message = {
-      sender: profile.name,
-      text: msg.trim(),
-      time: now(),
-      mine: true,
+    try {
+      await sendMessage(id, msg.trim())
+      setMsg('')
+      // Room will update via real-time subscription
+    } catch (err) {
+      window.__showToast?.('❌ Error sending message')
     }
-    sendMessage(id, message)
-    setMsg('')
-    const updated = getRoomById(id)
-    setRoom(updated)
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const handleJoin = () => {
-    if (!profile) {
+  const handleJoin = async () => {
+    const p = await getProfile()
+    if (!p) {
       window.__showToast?.('Set up your profile first!')
       navigate('/profile')
       return
     }
-    joinRoom(id, { name: profile.name, mobile: profile.mobile, isOwner: false })
-    setRoom(getRoomById(id))
-    window.__showToast?.('🎉 You joined the room!')
+    try {
+      await joinRoom(id)
+      window.__showToast?.('🎉 You joined the room!')
+      // Room will update via real-time subscription
+    } catch (err) {
+      window.__showToast?.('❌ Error joining room')
+    }
   }
 
   return (

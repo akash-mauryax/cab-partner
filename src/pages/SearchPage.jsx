@@ -1,20 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LOCATIONS, TAGS, getProfile, createRoom, getRooms, saveRooms } from '../store'
+import { LOCATIONS, getProfile, createRoom, getRooms } from '../store'
 import MapView from '../components/MapView'
 
 export default function SearchPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ from: '', to: '', time: '', seats: '4' })
-  const [tags, setTags] = useState([])
   const [mode, setMode] = useState('search') // 'search' | 'create'
   const [roomName, setRoomName] = useState('')
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  const toggleTag = (tag) => {
-    setTags(t => t.includes(tag) ? t.filter(x => x !== tag) : [...t, tag])
-  }
+
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -26,12 +23,12 @@ export default function SearchPage() {
       window.__showToast?.('From and To cannot be the same!')
       return
     }
-    navigate('/rides', { state: { filter: { from: form.from, to: form.to, tags } } })
+    navigate('/rides', { state: { filter: { from: form.from, to: form.to } } })
   }
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault()
-    const profile = getProfile()
+    const profile = await getProfile()
     if (!profile) {
       window.__showToast?.('💡 Set up your profile first!')
       setTimeout(() => navigate('/profile'), 800)
@@ -45,18 +42,19 @@ export default function SearchPage() {
       window.__showToast?.('From and To cannot be the same!')
       return
     }
-    const room = createRoom({
-      owner: profile.name,
-      ownerMobile: profile.mobile,
-      ownerName: profile.name,
-      from: form.from,
-      to: form.to,
-      time: form.time,
-      tags: tags.length ? tags : ['IIIT Allahabad'],
-      seats: parseInt(form.seats),
-    })
-    window.__showToast?.('🎉 Room created!')
-    setTimeout(() => navigate(`/room/${room.id}`), 600)
+    try {
+      const room = await createRoom({
+        from: form.from,
+        to: form.to,
+        time: form.time,
+        seats: parseInt(form.seats),
+      })
+      window.__showToast?.('🎉 Room created!')
+      setTimeout(() => navigate(`/room/${room.id}`), 600)
+    } catch (err) {
+      window.__showToast?.('❌ Error creating room')
+      console.error(err)
+    }
   }
 
   return (
@@ -173,24 +171,7 @@ export default function SearchPage() {
             </div>
           )}
 
-          {/* Tags */}
-          <div className="form-group animate-in">
-            <label className="form-label">Community Tags</label>
-            <div className="tag-group">
-              {TAGS.map(tag => (
-                <span
-                  key={tag}
-                  className={`tag${tags.includes(tag) ? ' selected' : ''}`}
-                  onClick={() => toggleTag(tag)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => e.key === 'Enter' && toggleTag(tag)}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
+
 
           <button
             id={mode === 'search' ? 'search-btn' : 'create-room-btn'}
