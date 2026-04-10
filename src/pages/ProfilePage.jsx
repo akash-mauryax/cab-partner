@@ -28,7 +28,7 @@ export default function ProfilePage() {
       await saveProfile(form)
       setSaved(true)
       window.__showToast?.('✅ Profile saved!')
-      setTimeout(() => navigate('/search'), 800)
+      setTimeout(() => navigate('/app/search'), 800)
     } catch (err) {
       window.__showToast?.('❌ Error saving profile')
       console.error(err)
@@ -36,92 +36,101 @@ export default function ProfilePage() {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">Personal <span>Details</span></h1>
-        <p className="page-subtitle">Set up your profile to start sharing rides</p>
+    <div className="profile-immersive">
+      {/* Side Decorations */}
+      <div className="decoration dec-car-top">🏎️</div>
+      <div className="decoration dec-car-bottom">🚕</div>
+      <div className="decoration dec-city">🏙️</div>
+
+      <div className="l-rides-header" style={{ marginBottom: 40 }}>
+        <h1 className="page-title" style={{ fontSize: '42px', textAlign: 'center' }}>Personal <span>Details</span></h1>
+        <p className="page-subtitle" style={{ textAlign: 'center' }}>Complete your profile to start sharing rides</p>
       </div>
 
-      <div className="section">
-        {/* Avatar */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+      <div className="profile-grid">
+        {/* Header/Avatar Area (Full Width in Grid row) */}
+        <div style={{ gridColumn: '1 / -1', textAlign: 'center', marginBottom: 40 }}>
           <div style={{
-            width: 90, height: 90, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary), #00bfa5)',
+            width: 120, height: 120, borderRadius: '50%',
+            background: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 36, fontWeight: 800, color: '#0a0f0d',
-            margin: '0 auto 10px',
-            boxShadow: '0 0 30px rgba(0,230,118,0.3)',
+            fontSize: 48, fontWeight: 800, color: '#1E1E1E',
+            margin: '0 auto 16px',
+            boxShadow: 'var(--shadow-glow)',
+            border: '8px solid #FFF'
           }}>
             {form.name ? form.name[0].toUpperCase() : '?'}
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>
             {saved ? '✅ Profile active' : 'Complete your profile'}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="animate-in">
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
+        {/* Input Form Column 1 */}
+        <div className="widget-form animate-in">
+          <div className="widget-input-group">
+            <label>Full Name</label>
             <input
-              id="profile-name"
               name="name"
-              className="form-input"
+              className="widget-input"
               placeholder="e.g. Sherlock Holmes"
               value={form.name}
               onChange={handleChange}
-              autoComplete="off"
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Gender</label>
-            <div className="radio-group">
+          <div className="widget-input-group">
+            <label>Age</label>
+            <input
+              name="age"
+              type="number"
+              className="widget-input"
+              placeholder="e.g. 21"
+              value={form.age}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+
+        {/* Input Form Column 2 */}
+        <div className="widget-form animate-in" style={{ animationDelay: '0.1s' }}>
+          <div className="widget-input-group">
+            <label>Gender</label>
+            <div className="widget-tabs" style={{ background: 'transparent', padding: 0 }}>
               {['MALE', 'FEMALE', 'OTHER'].map(g => (
-                <label
+                <button
                   key={g}
-                  className={`radio-option${form.gender === g ? ' selected' : ''}`}
+                  type="button"
+                  className={form.gender === g ? 'active' : ''}
+                  style={{ border: '1px solid #EEE', borderRadius: '8px', fontSize: '13px' }}
                   onClick={() => setGender(g)}
                 >
-                  <input type="radio" name="gender" value={g} readOnly />
-                  <span>{g === 'MALE' ? '♂' : g === 'FEMALE' ? '♀' : '⚧'}</span>
-                  <span style={{ fontSize: 12 }}>{g}</span>
-                </label>
+                  {g === 'MALE' ? '♂ ' : g === 'FEMALE' ? '♀ ' : '⚧ '} {g}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Age</label>
+          <div className="widget-input-group">
+            <label>Mobile Number</label>
             <input
-              id="profile-age"
-              name="age"
-              type="number"
-              className="form-input"
-              placeholder="e.g. 21"
-              value={form.age}
-              onChange={handleChange}
-              min="16" max="60"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Mobile Number</label>
-            <input
-              id="profile-mobile"
               name="mobile"
-              className="form-input"
+              className="widget-input"
               placeholder="e.g. 9876543210"
               value={form.mobile}
               onChange={handleChange}
-              autoComplete="off"
             />
           </div>
+        </div>
 
-          <button id="profile-save-btn" type="submit" className="btn btn-primary" style={{ marginTop: 8 }}>
-            {saved ? '💾 Update Profile' : '🚀 Save & Continue'}
-          </button>
-        </form>
+        {/* Bottom Button (Full Width) */}
+        <div style={{ gridColumn: '1 / -1', marginTop: 20 }}>
+          <form onSubmit={handleSubmit}>
+            <button type="submit" className="widget-main-btn" style={{ width: '100%', fontSize: '18px' }}>
+              {saved ? '💾 Update Profile' : '🚀 Save & Continue'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

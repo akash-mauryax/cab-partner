@@ -2,9 +2,9 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
 const tabs = [
-  { path: '/search', icon: '🔍', label: 'Search' },
-  { path: '/rides', icon: '🚗', label: 'Rides' },
-  { path: '/profile', icon: '👤', label: 'Profile' },
+  { path: '/app/search', icon: '🔍', label: 'Search' },
+  { path: '/app/rides', icon: '🚗', label: 'Rides' },
+  { path: '/app/profile', icon: '👤', label: 'Profile' },
 ]
 
 export default function Layout() {
@@ -21,23 +21,27 @@ export default function Layout() {
   }, [])
 
   const pageTitle = {
-    '/search': 'Search Ride',
-    '/rides': 'Rides',
-    '/profile': 'Profile',
-  }[location.pathname] || 'Scab'
+    '/app/search': 'Search Ride',
+    '/app/rides': 'Rides',
+    '/app/profile': 'Profile',
+  }[location.pathname] || 'Cab Partner'
+
+  const isImmersive = location.pathname === '/app/profile' || location.pathname.startsWith('/app/room/') || location.pathname === '/app/search' || location.pathname === '/app/rides'
 
   return (
-    <div className="app-container">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-brand" onClick={() => navigate('/search')} style={{ cursor: 'pointer' }}>
-          <div className="navbar-logo">S</div>
-          <span className="navbar-title">Scab</span>
-        </div>
-        <div className="navbar-actions">
-          <button title="Notifications" aria-label="Notifications">🔔</button>
-        </div>
-      </nav>
+    <div className={`app-container${isImmersive ? ' light-theme full-width' : ''}`}>
+      {/* Navbar - Hidden on Immersive Pages per user request */}
+      {!isImmersive && (
+        <nav className="navbar">
+          <div className="navbar-brand" onClick={() => navigate('/app/search')} style={{ cursor: 'pointer' }}>
+            <div className="navbar-logo">C</div>
+            <span className="navbar-title">Cab Partner</span>
+          </div>
+          <div className="navbar-actions">
+            <button title="Notifications" aria-label="Notifications">🔔</button>
+          </div>
+        </nav>
+      )}
 
       {/* Page content */}
       <Outlet />

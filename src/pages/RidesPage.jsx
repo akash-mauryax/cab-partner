@@ -8,7 +8,7 @@ export default function RidesPage() {
   const location = useLocation()
   const filter = location.state?.filter || null
 
-  const [tab, setTab] = useState('all')
+  const [tab, setTab] = useState(location.state?.tab || 'all')
   const [rooms, setRooms] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -47,18 +47,18 @@ export default function RidesPage() {
     const p = await getProfile()
     if (!p) {
       window.__showToast?.('💡 Set up your profile first!')
-      setTimeout(() => navigate('/profile'), 800)
+      setTimeout(() => navigate('/app/profile'), 800)
       return
     }
     const already = room.passengers.some(pass => pass.id === p.id)
     if (already) {
-      navigate(`/room/${room.id}`)
+      navigate(`/app/room/${room.id}`)
       return
     }
     try {
       await joinRoom(room.id)
       window.__showToast?.('🎉 Joined room!')
-      setTimeout(() => navigate(`/room/${room.id}`), 600)
+      setTimeout(() => navigate(`/app/room/${room.id}`), 600)
     } catch (err) {
       window.__showToast?.('❌ Error joining room')
       console.error(err)
@@ -66,132 +66,82 @@ export default function RidesPage() {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">
-          🚗 <span>Rides</span>
-          <button
-            id="refresh-rides"
-            onClick={() => setRooms(getRooms())}
-            style={{
-              marginLeft: 12, background: 'none', border: 'none',
-              color: 'var(--primary)', cursor: 'pointer', fontSize: 20,
-              padding: 4, borderRadius: 8,
-            }}
-            title="Refresh"
-          >⟳</button>
+    <div className="profile-immersive">
+      {/* Side Decorations */}
+      <div className="decoration dec-car-top">🏎️</div>
+      <div className="decoration dec-car-bottom">🚕</div>
+      <div className="decoration dec-city">🏙️</div>
+
+      <div className="l-rides-header" style={{ marginBottom: 40, textAlign: 'center' }}>
+        <h1 className="page-title" style={{ fontSize: '42px' }}>
+          Available <span>Rides</span>
         </h1>
         <p className="page-subtitle">
-          {filter ? `Showing rides from ${filter.from || 'anywhere'} → ${filter.to || 'anywhere'}` : 'All available cab rooms'}
+          {filter ? `Showing rides from ${filter.from || 'anywhere'} → ${filter.to || 'anywhere'}` : 'Browse all live cab sharing rooms'}
         </p>
       </div>
 
-      {filter && (
-        <div style={{ padding: '0 20px 16px' }}>
-          <MapView from={filter.from} to={filter.to} height="120px" />
+      <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40 }}>
+          <div className="widget-tabs" style={{ maxWidth: '400px' }}>
+            <button className={tab === 'all' ? 'active' : ''} onClick={() => setTab('all')}>All Rooms</button>
+            <button className={tab === 'mine' ? 'active' : ''} onClick={() => setTab('mine')}>Your Rooms</button>
+          </div>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="tabs">
-        <button
-          id="tab-all-rooms"
-          className={`tab-btn${tab === 'all' ? ' active' : ''}`}
-          onClick={() => setTab('all')}
-        >All Rooms ({filteredRooms.length})</button>
-        <button
-          id="tab-your-rooms"
-          className={`tab-btn${tab === 'mine' ? ' active' : ''}`}
-          onClick={() => setTab('mine')}
-        >Your Rooms ({myRooms.length})</button>
-      </div>
-
-      <div className="section">
         {loading ? (
-          <div style={{ textAlign: 'center', marginTop: 100, color: 'var(--text-muted)' }}>
-            <div className="animate-pulse" style={{ fontSize: 40, marginBottom: 12 }}>🚕</div>
-            <div>Loading rides from database...</div>
+          <div style={{ textAlign: 'center', padding: '100px', color: '#888' }}>
+             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚕</div>
+             <p style={{ fontWeight: 500 }}>Fetching live rides...</p>
           </div>
         ) : displayed.length === 0 ? (
-          <div className="empty-state animate-in">
-            <div className="empty-icon">🚕</div>
-            <div className="empty-title">No rooms found</div>
-            <div className="empty-desc">
-              {tab === 'mine'
-                ? 'You have not joined any rooms yet'
-                : 'No rides match your search. Try creating one!'}
-            </div>
-            <button
-              className="btn btn-outline"
-              style={{ marginTop: 20, width: 'auto', padding: '12px 28px' }}
-              onClick={() => navigate('/search')}
-            >➕ Create Room</button>
+          <div style={{ textAlign: 'center', padding: '100px', background: '#FFF', borderRadius: '24px', border: '2px dashed #EEE' }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🚕</div>
+            <h3 style={{ fontSize: '24px', fontWeight: 700, color: '#1E1E1E', marginBottom: '12px' }}>No Rides Found</h3>
+            <p style={{ color: '#888', marginBottom: '32px' }}>
+              {tab === 'mine' ? 'You have not joined any rooms yet.' : 'Try a different route or create your own room!'}
+            </p>
+            <button className="widget-main-btn" onClick={() => navigate('/app/search')}>➕ Create New Room</button>
           </div>
         ) : (
-          displayed.map((room, i) => {
-            const tl = timeLeft(room)
-            const urgent = isUrgent(room)
-            const isMember = room.passengers.some(p => p.mobile === profile?.mobile)
-            const isFull = room.passengers.length >= room.seats
+          <div className="l-rides-grid">
+            {displayed.map((room) => {
+              const tl = timeLeft(room)
+              const urgent = isUrgent(room)
+              const isFull = room.passengers.length >= room.seats
+              const isMember = room.passengers.some(p => p.id === profile?.id)
 
-            return (
-              <div
-                key={room.id}
-                className="ride-card animate-in"
-                style={{ animationDelay: `${i * 0.06}s` }}
-                onClick={() => navigate(`/room/${room.id}`)}
-              >
-                {/* Owner */}
-                <div className="owner-badge">
-                  <div className="owner-avatar">{room.owner[0]}</div>
-                  <span>{room.owner}</span>
-                  {isMember && (
-                    <span style={{
-                      marginLeft: 'auto', fontSize: 11, fontWeight: 600,
-                      padding: '2px 8px', borderRadius: 6,
-                      background: 'var(--primary-glow)', color: 'var(--primary)',
-                      border: '1px solid rgba(0,230,118,0.3)',
-                    }}>Joined</span>
-                  )}
-                </div>
-
-                {/* Route */}
-                <div className="ride-route">
-                  <div className="route-dot from" />
-                  <span className="route-name">{room.from}</span>
-                  <div style={{ flex: 1, borderTop: '1px dashed var(--border)', margin: '0 4px' }} />
-                  <span className="route-arrow">→</span>
-                  <div style={{ flex: 1, borderTop: '1px dashed var(--border)', margin: '0 4px' }} />
-                  <div className="route-dot to" />
-                  <span className="route-name">{room.to}</span>
-                </div>
-
-                {/* Meta */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <div className="ride-meta">
-                    <span className="ride-meta-item">⏰ {room.time}</span>
-                    <span className="ride-meta-item">👥 {room.passengers.length}/{room.seats}</span>
+              return (
+                <div key={room.id} className="l-ride-card" onClick={() => navigate(`/app/room/${room.id}`)}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="l-ride-badge" style={{ background: '#000', color: '#F9CA1C' }}>{room.owner}</span>
+                    <span className={`l-ride-badge ${urgent ? 'urgent' : ''}`} style={{ fontWeight: 800 }}>{tl}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className={`time-badge${urgent ? ' urgent' : ''}`}>{tl}</span>
+                  
+                  <div className="l-ride-route">
+                    <span className="l-route-text" style={{ fontSize: '18px' }}>{room.from}</span>
+                    <div className="l-route-line"></div>
+                    <span className="l-route-text" style={{ fontSize: '18px' }}>{room.to}</span>
+                  </div>
+
+                  <div className="l-ride-meta">
+                    <div className="l-ride-info">
+                      <span>⏰ {room.time}</span>
+                      <span>👥 {room.passengers.length}/{room.seats}</span>
+                    </div>
+                    <button 
+                      className="l-ride-join-btn"
+                      onClick={(e) => !isFull ? handleJoin(e, room) : e.stopPropagation()}
+                      disabled={isFull && !isMember}
+                    >
+                      {isMember ? 'Open Chat' : isFull ? 'Full' : 'Join Ride'}
+                    </button>
                   </div>
                 </div>
-
-
-
-                {/* Action */}
-                <button
-                  id={`join-btn-${room.id}`}
-                  className={`btn ${isMember ? 'btn-secondary' : isFull ? 'btn-danger' : 'btn-primary'}`}
-                  style={{ marginTop: 14 }}
-                  onClick={(e) => !isFull ? handleJoin(e, room) : e.stopPropagation()}
-                  disabled={isFull && !isMember}
-                >
-                  {isMember ? '💬 Open Room' : isFull ? '🚫 Room Full' : '🚗 Join Room'}
-                </button>
-              </div>
-            )
-          })
+              )
+            })}
+          </div>
         )}
       </div>
     </div>

@@ -22,6 +22,144 @@
   --shadow-glow: 0 0 20px rgba(0, 230, 118, 0.15);
 }
 
+.light-theme {
+  --bg: #FFFFFF;
+  --bg-card: #F9F9F9;
+  --bg-card-hover: #F2F2F2;
+  --bg-input: #FFFFFF;
+  --border: #E0E0E0;
+  --primary: #F9CA1C;
+  --primary-dim: #E5B800;
+  --primary-glow: rgba(249, 202, 28, 0.2);
+  --text: #1E1E1E;
+  --text-muted: #666666;
+  --text-dim: #999999;
+  --shadow-glow: 0 0 20px rgba(249, 202, 28, 0.2);
+}
+
+.light-theme .navbar {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #EEE;
+}
+
+.light-theme .tab-bar {
+  background: rgba(245, 245, 245, 0.95);
+  border-top: 1px solid #EEE;
+}
+
+.light-theme .navbar-logo,
+.light-theme .owner-avatar,
+.light-theme .passenger-avatar {
+  background: var(--primary);
+  color: var(--brand-dark);
+}
+
+.light-theme .btn-primary {
+  background: var(--brand-dark);
+  color: var(--primary);
+}
+
+.light-theme .btn-primary:hover {
+  background: #333;
+}
+
+.light-theme .form-input, 
+.light-theme .form-select {
+  border: 1px solid #DDD;
+  background: #FAFAFA;
+  color: #1E1E1E;
+}
+
+.light-theme .form-input:focus, 
+.light-theme .form-select:focus {
+  border-color: var(--primary);
+  background: #FFFFFF;
+}
+
+.light-theme .radio-option.selected {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--brand-dark);
+}
+
+.light-theme .chat-container {
+  background: #F9F9F9;
+  border: 1px solid #EEE;
+}
+
+.light-theme .chat-bubble {
+  background: #EEE;
+  color: #1E1E1E;
+}
+
+.light-theme .chat-msg.mine .chat-bubble {
+  background: var(--primary);
+  color: var(--brand-dark);
+}
+
+.light-theme .chat-input-bar {
+  background: #FFF;
+  border-top: 1px solid #EEE;
+}
+
+.light-theme .chat-input {
+  background: #FAFAFA;
+  color: #1E1E1E;
+}
+
+.light-theme .stat-box {
+  background: #FFF;
+  border: 1px solid #EEE;
+  color: #1E1E1E;
+}
+
+.light-theme .stat-value { color: var(--brand-dark); }
+.light-theme .passenger-item { background: #FFF; border: 1px solid #F5F5F5; }
+.light-theme .passenger-name { color: #1E1E1E; }
+.light-theme .card { background: #FFF; border: 1px solid #EEE; color: #1E1E1E; }
+
+/* Immersive Profile Styles */
+.profile-immersive {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 40px 20px 100px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.decoration {
+  position: fixed;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  filter: grayscale(1) invert(0);
+}
+
+.light-theme .decoration {
+  opacity: 0.08;
+  filter: grayscale(1) invert(1);
+}
+
+.dec-car-top { top: 10%; left: -5%; width: 300px; transform: rotate(-15deg); }
+.dec-car-bottom { bottom: 10%; left: 0%; width: 250px; }
+.dec-city { bottom: 0; right: 0; width: 400px; }
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -71,6 +209,11 @@ body::before {
   width: 100%;
   padding-bottom: 80px;
   position: relative;
+  transition: max-width 0.3s ease;
+}
+
+.app-container.full-width {
+  max-width: 100%;
 }
 
 /* ---- Navbar ---- */
